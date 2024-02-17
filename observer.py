@@ -3,6 +3,7 @@ from typing import Dict, Union, List, Tuple
 import math
 import dm_env
 import numpy as np
+import gym
 
 
 class ContObserver(EnvLoopObserver):
@@ -11,31 +12,45 @@ class ContObserver(EnvLoopObserver):
         self.observations = None
     def observe_first(self, env : dm_env.Environment, timestep: dm_env.TimeStep, action: np.ndarray) -> None:
         self.observations = List[Dict[str, float]]
+        self.radii = List[float]
+        self.angles = List[float]
         # timestep contains all the information
-        current_timestep = Dict[str, float]
+        # current_timestep = Dict[str, float]
         observation = timestep.observation
         # we need the angles between trajectories as well as radii
-        info = env.get_info()
-        x_pos = info["x_position"]
-        y_pos = info["y_position"]
+        x_pos = observation[0]
+        y_pos = observation[1]
+        # info = env.get_info()
+        # x_pos = info["x_position"]
+        # y_pos = info["y_position"]
+        angle = math.atan2(y_pos, x_pos)
         radius = math.sqrt(math.pow(x_pos, 2) + math.pow(y_pos, 2))
-        current_timestep["radius"] = radius
-        self.observations = [current_timestep]
+        self.radii.append(radius)
+        self.angles.append(angle)
+        # self.observations = [current_timestep]
     def observe(self, env: dm_env.Environment, timestep: dm_env.TimeStep,
               action: np.ndarray) -> None:
-        current_timestep = Dict[str, float]
-        current_timestep = Dict[str, float]
-        observation = timestep.observation
+        # current_timestep = Dict[str, float]
+        # current_timestep = Dict[str, float]
+        observation = timestep.observation # still box from gym
         # we need the angles between trajectories as well as radii
-        info = env.get_info()
-        x_pos = info["x_position"]
-        y_pos = info["y_position"]
+        # constrained from [-1, 1]
+        x_pos = observation[0]
+        y_pos = observation[1]
         radius = math.sqrt(math.pow(x_pos, 2) + math.pow(y_pos, 2))
-        current_timestep["radius"] = radius
-        self.observations.append(current_timestep)
+        angle = math.atan2(y_pos, x_pos)
+        self.radii.append(radius)
+        self.angles.append(angle)
+        # current_timestep["radius"] = radius
+        # current_timestep["angle"] = angle
+        # self.observations.append(current_timestep)
     def get_metrics(self) -> Dict[str, float]:
         return {
-            'episode_observations': self.observations
+                'radius' : self.radii,
+                'angle': self.angles
         }
     def get_episode_obs(self) -> List[Dict[str, float]]:
         return self.observations
+
+        
+

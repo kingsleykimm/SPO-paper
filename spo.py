@@ -8,12 +8,15 @@ from acme import core
 from acme import specs
 from acme import types
 from acme.jax import utils
+import acme.jax.types as jax_types
 from acme.jax.experiments import config
 from acme.tf import savers
 from acme.utils import counting
+from acme.adders.reverb import EpisodeAdder
 import dm_env
 import jax
 import reverb
+from environmentloop import SPOLoop
 
 
 # SPO Runner class should contain specific environment run configs
@@ -24,6 +27,7 @@ class SPORunner():
         self.agent = config.agent
         self.experiment = self.agent.get_experiment_config()
         self.queue = List[List[Dict[str, float]]]
+        self.policies = List[jax_types.Policy]
     def run(self, experiment):
 
         key = jax.random.PRNGKey(experiment.seed)
@@ -77,7 +81,6 @@ class SPORunner():
             counter=counting.Counter(parent_counter, prefix='learner', time_delta=0.))
 
         adder = experiment.builder.make_adder(replay_client, environment_spec, policy)
-
         actor_key, key = jax.random.split(key)
         actor = experiment.builder.make_actor(
             actor_key, policy, environment_spec, variable_source=learner, adder=adder)
@@ -110,7 +113,7 @@ class SPORunner():
         actor = _LearningActor(actor, learner, dataset, replay_tables,
                                 rate_limiters_max_diff, checkpointer)
         
-        train_loop = acme.EnvironmentLoop(
+        train_loop = SPOLoop(
                     environment,
                     actor,
                     counter=train_counter,
@@ -123,8 +126,12 @@ class SPORunner():
             self.queue.append(experiment.observers[0].get_episode_obs())
 
         for t in range(self.iterations):
-            train_loop.run_episode()
+            info = train_loop.run_episode()
             trajectory = experiment.observers[0].get_episode_obs()
+            reward = self.compute_reward(trajectory, info['episode_length']) # reward at each timestep
+            # need to plug in custom reward here
+            self.queue.pop(0)
+            self.queue.append(trajectory)
             
 
         eval_counter = counting.Counter(
@@ -146,7 +153,18 @@ class SPORunner():
         environment.close()
 
         pass
-
+    def compute_reward(self, trajectory, episode_length):
+        """Computes reward for the given trajectory"""
+        last_step = trajectory[-1]
+        current_trajectory = Trajectory(last_step["angle"], last_step["radius"])
+        reward = 0
+        for traj in self.queue:
+            traj_last_step = traj[-1]
+            compare_trajectory = Trajectory(traj_last_step["angle"], traj_last_step["radius"])
+            reward += self.agent.preference_function(current_trajectory, compare_trajectory)
+        return_reward = [reward / episode_length] * episode_length
+        return return_reward
+        # observations here are still angles
 
 
 
@@ -222,8 +240,8 @@ class _LearningActor(core.Actor):
                 time.sleep(0.001)
 
     def update(self):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
-        if self._maybe_train():
         # Update the actor weights only when learner was updated.
+        if self._maybe_train():
             self._actor.update()
         if self._checkpointer:
             self._checkpointer.save()
@@ -248,3 +266,8 @@ def _disable_insert_blocking(
         max(1, int(
             (rate_limiter_info.max_diff - rate_limiter_info.min_diff) / 2)))
   return modified_tables, sample_sizes
+
+class Trajectory():
+    def __init__(self, angle: float, radius: float):
+        self.angle = angle
+        self.radius = radius

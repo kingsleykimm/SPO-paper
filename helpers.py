@@ -25,7 +25,7 @@ def make_environment(suite: str, task: str) -> dm_env.Environment:
             f'Unsupported suite: {suite}. Expected one of {_VALID_TASK_SUITES}')
 
     if suite == 'gym':
-        env = gym.make(task)
+        env = gym.make(task, exclude_current_positions_from_observation=False)
         # Make sure the environment obeys the dm_env.Environment interface.
         env = wrappers.GymWrapper(env)
 

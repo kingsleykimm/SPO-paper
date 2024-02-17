@@ -59,7 +59,7 @@ class SAC():
             return 1.0
         else:
             return 1.0 if traj_1_dist > traj_2_dist else 0.0
-    def intransitive_ant_preference(self, traj_1, traj_2):
+    def preference_function(self, traj_1, traj_2):
         return (0.3 * self.distance_preference(traj_1.radius, traj_2.radius, 10.0) + 
                 0.7 * self.angular_preference(traj_1.angle, traj_2.angle, math.pi/4))
 
