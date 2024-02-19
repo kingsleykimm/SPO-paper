@@ -26,7 +26,7 @@ class SPORunner():
         self.queue_size = config.queue_size
         self.agent = config.agent
         self.experiment = self.agent.get_experiment_config()
-        self.queue = List[List[Dict[str, float]]]
+        self.queue = List[Trajectory]
         self.policies = List[jax_types.Policy]
     def run(self, experiment):
 
@@ -126,10 +126,12 @@ class SPORunner():
             self.queue.append(experiment.observers[0].get_episode_obs())
 
         for t in range(self.iterations):
-            info = train_loop.run_episode()
-            trajectory = experiment.observers[0].get_episode_obs()
-            reward = self.compute_reward(trajectory, info['episode_length']) # reward at each timestep
+            metrics = train_loop.run_episode()
+
+            rewards, trajectory = self.compute_reward(metrics) # reward at each timestep
             # need to plug in custom reward here
+            self.change_rewards_and_update(rewards, metrics, actor)
+            # update
             self.queue.pop(0)
             self.queue.append(trajectory)
             
@@ -153,18 +155,29 @@ class SPORunner():
         environment.close()
 
         pass
-    def compute_reward(self, trajectory, episode_length):
+    def compute_reward(self, metrics):
         """Computes reward for the given trajectory"""
-        last_step = trajectory[-1]
-        current_trajectory = Trajectory(last_step["angle"], last_step["radius"])
+        episode_length = metrics["episode_length"]
+        radii = metrics["radius"]
+        angles = metrics["angle"]
+        current_trajectory = Trajectory(radii[episode_length-1], angles[episode_length-1])
         reward = 0
-        for traj in self.queue:
-            traj_last_step = traj[-1]
-            compare_trajectory = Trajectory(traj_last_step["angle"], traj_last_step["radius"])
-            reward += self.agent.preference_function(current_trajectory, compare_trajectory)
+        for trajectory in self.queue:
+            reward += self.agent.preference_function(current_trajectory, trajectory)
         return_reward = [reward / episode_length] * episode_length
-        return return_reward
+        return return_reward, current_trajectory
         # observations here are still angles
+    def change_reward_and_update(self, rewards, metrics, actor):
+        episode_length = metrics["episode_length"]
+        # for observe_first, there is more 
+        timesteps = metrics["timestep"]
+        action = metrics["action"]
+        actor.observe_first(timesteps[0])
+        for i in range(episode_length):
+            current_timestep = timesteps[i+1]
+            current_timestep.reward = rewards[i]
+            actor.observe(action[i], next_timestep=current_timestep)
+            
 
 
 
