@@ -1,7 +1,7 @@
 
 import sys
 import time
-from typing import Optional, Sequence, Tuple, Dict, List
+from typing import Optional, Sequence, Tuple, Dict, List, Any
 from continuous import PPO
 import acme
 from acme import core
@@ -12,7 +12,6 @@ import acme.jax.types as jax_types
 from acme.jax.experiments import config
 from acme.tf import savers
 from acme.utils import counting
-from acme.adders.reverb import EpisodeAdder
 import dm_env
 import jax
 import reverb
@@ -26,7 +25,7 @@ class SPORunner():
         self.queue_size = config.queue_size
         self.agent = config.agent
         self.experiment = self.agent.get_experiment_config()
-        self.queue = List[Trajectory]
+        self.queue = List[Dict[str, Any]]
         self.policies = List[jax_types.Policy]
     def run(self, experiment):
 
@@ -122,24 +121,29 @@ class SPORunner():
                     should_update=False,
                     )
         for i in range(self.queue_size):
-            train_loop.run_episode()
-            self.queue.append(experiment.observers[0].get_episode_obs())
-
+            metrics = train_loop.run_episode()
+            self.queue.append(metrics)
+        self.policies.append(policy)
         for t in range(self.iterations):
             metrics = train_loop.run_episode()
 
-            rewards, trajectory = self.compute_reward(metrics) # reward at each timestep
+            rewards = self.intransitive_reward(metrics) # reward at each timestep
             # need to plug in custom reward here
             self.change_rewards_and_update(rewards, metrics, actor)
-            # update
+            # update and get policy
+            # Look at actor_core's line 67 method, shows how to fetch params for policy network
+            # network is the policy network that is saved
+            # Generic_actor's line 76 instead, shows the params
             self.queue.pop(0)
-            self.queue.append(trajectory)
-            
-
+            self.queue.append(metrics)
+            self.policies.append(actor._params)
+        
         eval_counter = counting.Counter(
             parent_counter, prefix='evaluator', time_delta=0.)
         eval_logger = experiment.logger_factory('evaluator',
                                                 eval_counter.get_steps_key(), 0)
+        
+
         eval_policy = config.make_policy(
             experiment=experiment,
             networks=networks,
@@ -155,18 +159,26 @@ class SPORunner():
         environment.close()
 
         pass
-    def compute_reward(self, metrics):
+    def intransitive_reward(self, metrics):
         """Computes reward for the given trajectory"""
         episode_length = metrics["episode_length"]
-        radii = metrics["radius"]
-        angles = metrics["angle"]
-        current_trajectory = Trajectory(radii[episode_length-1], angles[episode_length-1])
+        # radii = metrics["radius"]
+        # angles = metrics["angle"]
+        # current_trajectory = Trajectory(radii[episode_length-1], angles[episode_length-1])
         reward = 0
         for trajectory in self.queue:
-            reward += self.agent.preference_function(current_trajectory, trajectory)
+            reward += self.agent.preference_function(metrics, trajectory)
         return_reward = [reward / episode_length] * episode_length
-        return return_reward, current_trajectory
+        return return_reward
         # observations here are still angles
+    def maximum_reward(self, metrics):
+        # first timestep is from observe_first
+        episode_length = metrics["episode_length"]
+        reward = 0
+        for trajectory in self.queue:
+            reward += self.agent.max_reward_preference(metrics, trajectory)
+        return_reward = [reward / episode_length] * episode_length
+        return return_reward
     def change_reward_and_update(self, rewards, metrics, actor):
         episode_length = metrics["episode_length"]
         # for observe_first, there is more 
@@ -177,6 +189,8 @@ class SPORunner():
             current_timestep = timesteps[i+1]
             current_timestep.reward = rewards[i]
             actor.observe(action[i], next_timestep=current_timestep)
+        actor.update()
+        # update actor
             
 
 

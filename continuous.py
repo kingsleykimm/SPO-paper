@@ -10,7 +10,7 @@ from acme.utils import lp_utils, observers
 import launchpad as lp
 import math
 from observer import ContObserver
-
+import numpy as np
 FLAGS = flags.FLAGS
 
 flags.DEFINE_bool(
@@ -60,8 +60,19 @@ class SAC():
         else:
             return 1.0 if traj_1_dist > traj_2_dist else 0.0
     def preference_function(self, traj_1, traj_2):
-        return (0.3 * self.distance_preference(traj_1.radius, traj_2.radius, 10.0) + 
-                0.7 * self.angular_preference(traj_1.angle, traj_2.angle, math.pi/4))
+        # traj_1 and traj_2 are actually just metrics
+        
+        return (0.3 * self.distance_preference(traj_1["radius"][-1], traj_2["radius"][-1], 10.0) + 
+                0.7 * self.angular_preference(traj_1["angle"][-1], traj_2["angle"][-1], math.pi/4))
+    def max_reward_preference(self, trajectory_a, trajectory_b):
+        # trajectory contains metrics
+        timesteps_a = trajectory_a["timestep"]
+        timesteps_b = trajectory_b["timestep"]
+        reward_a = sum([x.reward for x in timesteps_a])
+        reward_b = sum([x.reward for x in timesteps_b])
+        return 2 * (reward_a > reward_b) - 1
+    def noisy_preference(self, trajectory_a, trajectory_b, epsilon):
+        return self.max_reward_preference(trajectory_a, trajectory_b) * np.random.binomial(1, epsilon)
 
 def ContRM():
     def __init__(self, config):
