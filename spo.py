@@ -20,14 +20,15 @@ from environmentloop import SPOLoop
 
 # SPO Runner class should contain specific environment run configs
 class SPORunner():
-    def __init__(self, config):
-        self.iterations = config.iterations
-        self.queue_size = config.queue_size
-        self.agent = config.agent
+    def __init__(self, run_config):
+        self.iterations = run_config.iterations
+        self.queue_size = run_config.queue_size
+        self.agent = run_config.agent
         self.experiment = self.agent.get_experiment_config()
         self.queue = List[Dict[str, Any]]
         self.policies = List[jax_types.Policy]
-    def run(self, experiment):
+        self.preference_ = self.agent.get_preference_function()
+    def run(self, experiment: config.ExperimentConfig):
 
         key = jax.random.PRNGKey(experiment.seed)
         environment = experiment.environment_factory(experiment.seed)
@@ -127,7 +128,7 @@ class SPORunner():
         for t in range(self.iterations):
             metrics = train_loop.run_episode()
 
-            rewards = self.intransitive_reward(metrics) # reward at each timestep
+            rewards = self.reward_function(metrics) # reward at each timestep
             # need to plug in custom reward here
             self.change_rewards_and_update(rewards, metrics, actor)
             # update and get policy
@@ -159,26 +160,34 @@ class SPORunner():
         environment.close()
 
         pass
-    def intransitive_reward(self, metrics):
-        """Computes reward for the given trajectory"""
-        episode_length = metrics["episode_length"]
-        # radii = metrics["radius"]
-        # angles = metrics["angle"]
-        # current_trajectory = Trajectory(radii[episode_length-1], angles[episode_length-1])
-        reward = 0
-        for trajectory in self.queue:
-            reward += self.agent.preference_function(metrics, trajectory)
-        return_reward = [reward / episode_length] * episode_length
-        return return_reward
-        # observations here are still angles
-    def maximum_reward(self, metrics):
-        # first timestep is from observe_first
+
+    def reward_function(self, metrics):
         episode_length = metrics["episode_length"]
         reward = 0
         for trajectory in self.queue:
-            reward += self.agent.max_reward_preference(metrics, trajectory)
+            reward += self.preference_(metrics, trajectory)
         return_reward = [reward / episode_length] * episode_length
         return return_reward
+    # def intransitive_reward(self, metrics):
+    #     """Computes reward for the given trajectory"""
+    #     episode_length = metrics["episode_length"]
+    #     # radii = metrics["radius"]
+    #     # angles = metrics["angle"]
+    #     # current_trajectory = Trajectory(radii[episode_length-1], angles[episode_length-1])
+    #     reward = 0
+    #     for trajectory in self.queue:
+    #         reward += self.agent.preference_function(metrics, trajectory)
+    #     return_reward = [reward / episode_length] * episode_length
+    #     return return_reward
+    #     # observations here are still angles
+    # def maximum_reward(self, metrics):
+    #     # first timestep is from observe_first
+    #     episode_length = metrics["episode_length"]
+    #     reward = 0
+    #     for trajectory in self.queue:
+    #         reward += self.agent.max_reward_preference(metrics, trajectory)
+    #     return_reward = [reward / episode_length] * episode_length
+    #     return return_reward
     def change_reward_and_update(self, rewards, metrics, actor):
         episode_length = metrics["episode_length"]
         # for observe_first, there is more 
