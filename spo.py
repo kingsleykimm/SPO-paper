@@ -28,7 +28,7 @@ class SPORunner():
         self.queue = List[Dict[str, Any]]
         self.policies = List[jax_types.Policy]
         self.preference_ = self.agent.get_preference_function()
-    def run(self, experiment: config.ExperimentConfig):
+    def run(self, experiment: config.ExperimentConfig): # input self.experiment
 
         key = jax.random.PRNGKey(experiment.seed)
         environment = experiment.environment_factory(experiment.seed)
@@ -138,7 +138,7 @@ class SPORunner():
             self.queue.pop(0)
             self.queue.append(metrics)
             self.policies.append(actor._params)
-        
+        optimal_policy : jax_types.Policy = self.policies[-1]
         eval_counter = counting.Counter(
             parent_counter, prefix='evaluator', time_delta=0.)
         eval_logger = experiment.logger_factory('evaluator',
@@ -152,9 +152,11 @@ class SPORunner():
             evaluation=True)
         eval_actor = experiment.builder.make_actor(
             random_key=jax.random.PRNGKey(experiment.seed),
-            policy=eval_policy,
+            policy=optimal_policy,
             environment_spec=environment_spec,
             variable_source=learner)
+        
+        
 
 
         environment.close()

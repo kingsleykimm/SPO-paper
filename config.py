@@ -16,27 +16,27 @@ flags.DEFINE_integer('max_replay_size', 1000000, 'Maximum replay buffer size')
 flags.DEFINE_string('preference_function', 'intransitive', 'Preference Function to use')
 
 class SPOConfig():
-    def __init__(self, agent : SAC,
-                 iterations: int,
-                 queue_size : int,
-                 preference):
+    def __init__(self):
         """
         Agent: contains most of the information for the RL agent, SAC, all the config will be handled on it's end
         
         """
-        self.agent = agent
+        self.agent = SAC(FLAGS.env_name, FLAGS.min_replay_size, FLAGS.max_replay_size, FLAGS.learning_rate, FLAGS.seed, FLAGS.num_steps,
+                            FLAGS.preference_function)
         self.iterations = FLAGS.iterations
         self.queue_size = FLAGS.queue_size
-        self.preference_function = agent.get_preference_function()
+        self.preference_function = self.agent.get_preference_function()
 # Plan for the SPO Config
 # Things needed that are not given in Experiment Config:
 # Num of iterations, Queue size, Preference_Function, 
 
 def main(_):
-    runner = SPORunner(SPOConfig)
+    config = SPOConfig()
+    runner = SPORunner(config)
+    runner.run(runner.experiment)
 
 
 
 if __name__ =='__main__':
-    main()
+    app.run(main)
 
