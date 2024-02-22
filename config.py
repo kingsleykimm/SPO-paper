@@ -1,5 +1,5 @@
 """Custom SPO Config"""
-from absl import app, args
+
 from continuous import SAC
 from typing_extensions import Protocol
 from spo import SPORunner
@@ -52,5 +52,5 @@ def main(_):
 
 
 if __name__ =='__main__':
-    app.run(main)
+    main()
 
