@@ -2,7 +2,6 @@
 import sys
 import time
 from typing import Optional, Sequence, Tuple, Dict, List, Any
-from continuous import PPO
 import acme
 from acme import core
 from acme import specs
