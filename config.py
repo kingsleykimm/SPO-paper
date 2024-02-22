@@ -16,19 +16,7 @@ import argparse
 # flags.DEFINE_integer('max_replay_size', 1000000, 'Maximum replay buffer size')
 # flags.DEFINE_string('preference_function', 'intransitive', 'Preference Function to use')
 
-parser = argparse.ArgumentParser(description='Description of your program')
 
-parser.add_argument('--iterations', type=int, default=100, help='Number of Loops of SPO')
-parser.add_argument('--queue_size', type=int, default=10, help='Size of queue to hold trajectories')
-parser.add_argument('--env_name', type=str, default='gym:Ant-v3', help='What environment to run')
-parser.add_argument('--seed', type=int, default=0, help='Random seed.')
-parser.add_argument('--num_steps', type=int, default=1_000_000, help='Number of env steps to run.')
-parser.add_argument('--learning_rate', type=float, default=3e-5, help='Learning rate of agent')
-parser.add_argument('--min_replay_size', type=int, default=10000, help='Minimum replay buffer size')
-parser.add_argument('--max_replay_size', type=int, default=1000000, help='Maximum replay buffer size')
-parser.add_argument('--preference_function', type=str, default='intransitive', help='Preference Function to use')
-
-args = parser.parse_args()
 class SPOConfig():
     def __init__(self):
         """
@@ -45,6 +33,19 @@ class SPOConfig():
 # Num of iterations, Queue size, Preference_Function, 
 
 def main(_):
+    parser = argparse.ArgumentParser(description='Description of your program')
+
+    parser.add_argument('--iterations', type=int, default=100, help='Number of Loops of SPO')
+    parser.add_argument('--queue_size', type=int, default=10, help='Size of queue to hold trajectories')
+    parser.add_argument('--env_name', type=str, default='gym:Ant-v3', help='What environment to run')
+    parser.add_argument('--seed', type=int, default=0, help='Random seed.')
+    parser.add_argument('--num_steps', type=int, default=1_000_000, help='Number of env steps to run.')
+    parser.add_argument('--learning_rate', type=float, default=3e-5, help='Learning rate of agent')
+    parser.add_argument('--min_replay_size', type=int, default=10000, help='Minimum replay buffer size')
+    parser.add_argument('--max_replay_size', type=int, default=1000000, help='Maximum replay buffer size')
+    parser.add_argument('--preference_function', type=str, default='intransitive', help='Preference Function to use')
+
+    args = parser.parse_args()
     config = SPOConfig()
     runner = SPORunner(config)
     runner.run(runner.experiment)
