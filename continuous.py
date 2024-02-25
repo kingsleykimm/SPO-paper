@@ -1,13 +1,11 @@
-from absl import flags
+import acme
 from acme import specs
 from acme.agents.jax import normalization
 from acme.agents.jax import sac
 from acme.agents.jax.sac import builder
 import helpers
-from absl import app
 from acme.jax import experiments
 from acme.utils import lp_utils, observers
-import launchpad as lp
 import math
 from observer import ContObserver
 import numpy as np
