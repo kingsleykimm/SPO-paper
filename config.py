@@ -18,7 +18,7 @@ import argparse
 
 
 class SPOConfig():
-    def __init__(self):
+    def __init__(self, args):
         """
         Agent: contains most of the information for the RL agent, SAC, all the config will be handled on it's end
         
@@ -32,12 +32,12 @@ class SPOConfig():
 # Things needed that are not given in Experiment Config:
 # Num of iterations, Queue size, Preference_Function, 
 
-def main(_):
+def main():
     parser = argparse.ArgumentParser(description='Description of your program')
 
     parser.add_argument('--iterations', type=int, default=100, help='Number of Loops of SPO')
     parser.add_argument('--queue_size', type=int, default=10, help='Size of queue to hold trajectories')
-    parser.add_argument('--env_name', type=str, default='gym:Ant-v3', help='What environment to run')
+    parser.add_argument('--env_name', type=str, default='gym:Ant-v4', help='What environment to run')
     parser.add_argument('--seed', type=int, default=0, help='Random seed.')
     parser.add_argument('--num_steps', type=int, default=1_000_000, help='Number of env steps to run.')
     parser.add_argument('--learning_rate', type=float, default=3e-5, help='Learning rate of agent')
@@ -46,7 +46,7 @@ def main(_):
     parser.add_argument('--preference_function', type=str, default='intransitive', help='Preference Function to use')
 
     args = parser.parse_args()
-    config = SPOConfig()
+    config = SPOConfig(args)
     runner = SPORunner(config)
     runner.run(runner.experiment)
 

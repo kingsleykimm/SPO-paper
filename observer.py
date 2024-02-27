@@ -10,11 +10,11 @@ class ContObserver(EnvLoopObserver):
     """Observer that collects angle information for continuous Mujoco trajectories"""
     def __init__(self):
         self.observations = None
-    def observe_first(self, env : dm_env.Environment, timestep: dm_env.TimeStep, action: np.ndarray) -> None:
-        self.actions = List[np.ndarray]
-        self.timesteps = List[dm_env.TimeStep]
-        self.radii = List[float]
-        self.angles = List[float]
+    def observe_first(self, env : dm_env.Environment, timestep: dm_env.TimeStep) -> None:
+        self.actions : List[np.ndarray] = []
+        self.timesteps: List[dm_env.TimeStep] = []
+        self.radii : List[float] = []
+        self.angles : List[float] = []
         # self.environments = List[dm_env.Environment]
         # timestep contains all the information
         # current_timestep = Dict[str, float]
@@ -30,7 +30,6 @@ class ContObserver(EnvLoopObserver):
         self.radii.append(radius)
         self.angles.append(angle)
         self.timesteps.append(timestep)
-        self.actions.append(action)
         # self.observations = [current_timestep]
     def observe(self, env: dm_env.Environment, timestep: dm_env.TimeStep,
               action: np.ndarray) -> None:

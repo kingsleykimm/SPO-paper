@@ -24,8 +24,8 @@ class SPORunner():
         self.queue_size = run_config.queue_size
         self.agent = run_config.agent
         self.experiment = self.agent.get_experiment_config()
-        self.queue = List[Dict[str, Any]]
-        self.policies = List[jax_types.Policy]
+        self.queue : List[Dict[str, Any]] = []
+        self.policies : List[jax_types.Policy] = []
         self.preference_ = self.agent.get_preference_function()
     def run(self, experiment: config.ExperimentConfig): # input self.experiment
 
