@@ -14,6 +14,7 @@ import dm_env
 from dm_env import specs
 import numpy as np
 import tree
+import jax
 
 
 class SPOLoop(core.Worker):
@@ -83,7 +84,7 @@ class SPOLoop(core.Worker):
     timestep = self._environment.reset()
     env_reset_duration = time.time() - env_reset_start
     # Make the first observation.
-    self._actor.observe_first(timestep)
+    random_state = self._actor.make_random_key()
     for observer in self._observers:
       # Initialize the observer with the current state of the env after reset
       # and the initial timestep.
@@ -136,6 +137,7 @@ class SPOLoop(core.Worker):
         'env_reset_duration_sec': env_reset_duration,
         'select_action_duration_sec': np.mean(select_action_durations),
         'env_step_duration_sec': np.mean(env_step_durations),
+        'actor_random_state' : random_state,
     }
     result.update(counts)
     for observer in self._observers:

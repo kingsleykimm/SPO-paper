@@ -48,7 +48,8 @@ def main():
     args = parser.parse_args()
     config = SPOConfig(args)
     runner = SPORunner(config)
-    runner.run(runner.experiment)
+    policy = runner.run(runner.experiment)
+    print(policy)
 
 
 

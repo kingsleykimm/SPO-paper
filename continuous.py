@@ -50,7 +50,7 @@ class SAC():
         return self.experiment
     def get_preference_function(self):
         if self.preference_function == 'intransitive':
-            return self.preference_function
+            return self.intransitive_reward_preference
         elif self.preference_function == 'maximum_reward':
             return self.max_reward_preference
         elif self.preference_function == 'noisy':
@@ -67,7 +67,7 @@ class SAC():
             return 1.0
         else:
             return 1.0 if traj_1_dist > traj_2_dist else 0.0
-    def preference_function(self, traj_1, traj_2):
+    def intransitive_reward_preference(self, traj_1, traj_2):
         # traj_1 and traj_2 are actually just metrics
         
         return (0.3 * self.distance_preference(traj_1["radius"][-1], traj_2["radius"][-1], 10.0) + 

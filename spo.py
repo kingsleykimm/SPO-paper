@@ -14,6 +14,7 @@ from acme.utils import counting
 import dm_env
 import jax
 import reverb
+import numpy as np
 from environmentloop import SPOLoop
 
 
@@ -126,8 +127,8 @@ class SPORunner():
         self.policies.append(policy)
         for t in range(self.iterations):
             metrics = train_loop.run_episode()
-
             rewards = self.reward_function(metrics) # reward at each timestep
+            
             # need to plug in custom reward here
             self.change_rewards_and_update(rewards, metrics, actor)
             # update and get policy
@@ -136,7 +137,7 @@ class SPORunner():
             # Generic_actor's line 76 instead, shows the params
             self.queue.pop(0)
             self.queue.append(metrics)
-            self.policies.append(actor._params)
+            self.policies.append(actor._actor._wrapped_actor._params)
         optimal_policy : jax_types.Policy = self.policies[-1]
         eval_counter = counting.Counter(
             parent_counter, prefix='evaluator', time_delta=0.)
@@ -159,8 +160,7 @@ class SPORunner():
 
 
         environment.close()
-
-        pass
+        return optimal_policy # these are just the parameters
 
     def reward_function(self, metrics):
         episode_length = metrics["episode_length"]
@@ -189,16 +189,19 @@ class SPORunner():
     #         reward += self.agent.max_reward_preference(metrics, trajectory)
     #     return_reward = [reward / episode_length] * episode_length
     #     return return_reward
-    def change_reward_and_update(self, rewards, metrics, actor):
+    def change_rewards_and_update(self, rewards, metrics, actor):
         episode_length = metrics["episode_length"]
         # for observe_first, there is more 
         timesteps = metrics["timestep"]
         action = metrics["action"]
         actor.observe_first(timesteps[0])
         for i in range(episode_length):
+
             current_timestep = timesteps[i+1]
-            current_timestep.reward = rewards[i]
-            actor.observe(action[i], next_timestep=current_timestep)
+
+            new_timestep = dm_env.TimeStep(step_type=current_timestep.step_type, reward= np.float32(rewards[i]), discount=current_timestep.reward,
+                                            observation=current_timestep.observation)
+            actor.observe(action[i], next_timestep=new_timestep)
         actor.update()
         # update actor
             
@@ -215,7 +218,7 @@ class _LearningActor(core.Actor):
     Selecting actions and making observations are handled by the base actor.
     Intended to be used by the `run_experiment` only.
     """
-
+    # actor here is the GenericActor
     def __init__(self, actor: core.Actor, learner: core.Learner,
                 iterator: core.PrefetchingIterator,
                 replay_tables: Sequence[reverb.Table],
@@ -242,6 +245,11 @@ class _LearningActor(core.Actor):
         self._sample_sizes = sample_sizes
         self._learner_steps = 0
         self._checkpointer = checkpointer
+
+    def make_random_key(self):
+        self._actor._wrapped_actor._random_key, key = jax.random.split(self._actor._wrapped_actor._random_key)
+        self._actor._wrapped_actor._state = self._actor._wrapped_actor._init(key)
+        return self._actor._wrapped_actor._state
 
     def select_action(self, observation: types.NestedArray) -> types.NestedArray:
         return self._actor.select_action(observation)
