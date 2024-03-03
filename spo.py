@@ -10,8 +10,10 @@ from acme.jax import utils
 import acme.jax.types as jax_types
 from acme.jax.experiments import config
 from acme.tf import savers
-from acme.utils import counting
+from acme.utils import counting, loggers
 import dm_env
+import matplotlib.pyplot as plt
+import pandas as pd
 import jax
 import reverb
 import numpy as np
@@ -88,9 +90,9 @@ class SPORunner():
         # Create the environment loop used for training.
         train_counter = counting.Counter(
             parent_counter, prefix='actor', time_delta=0.)
-        train_logger = experiment.logger_factory('actor',
-                                                train_counter.get_steps_key(), 0)
-        
+        # train_logger = experiment.logger_factory('actor',
+                                                # train_counter.get_steps_key(), 0)
+        train_logger = loggers.InMemoryLogger()
 
         checkpointer = None
         if experiment.checkpointing is not None:
@@ -138,29 +140,44 @@ class SPORunner():
             self.queue.pop(0)
             self.queue.append(metrics)
             self.policies.append(actor._actor._wrapped_actor._params)
-        optimal_policy : jax_types.Policy = self.policies[-1]
-        eval_counter = counting.Counter(
-            parent_counter, prefix='evaluator', time_delta=0.)
-        eval_logger = experiment.logger_factory('evaluator',
-                                                eval_counter.get_steps_key(), 0)
+            train_logger.write(metrics)
+        # optimal_policy : jax_types.Policy = self.policies[-1]
+        # eval_counter = counting.Counter(
+        #     parent_counter, prefix='evaluator', time_delta=0.)
+        # eval_logger = experiment.logger_factory('evaluator',
+        #                                         eval_counter.get_steps_key(), 0)
         
 
-        eval_policy = config.make_policy(
-            experiment=experiment,
-            networks=networks,
-            environment_spec=environment_spec,
-            evaluation=True)
-        eval_actor = experiment.builder.make_actor(
-            random_key=jax.random.PRNGKey(experiment.seed),
-            policy=optimal_policy,
-            environment_spec=environment_spec,
-            variable_source=learner)
+        # eval_policy = config.make_policy(
+        #     experiment=experiment,
+        #     networks=networks,
+        #     environment_spec=environment_spec,
+        #     evaluation=True)
+        # eval_actor = experiment.builder.make_actor(
+        #     random_key=jax.random.PRNGKey(experiment.seed),
+        #     policy=optimal_policy,
+        #     environment_spec=environment_spec,
+        #     variable_source=learner)
+        # eval_actor = _LearningActor(eval_actor, learner, dataset, replay_tables,
+        #                         rate_limiters_max_diff, checkpointer)
+        # eval_loop= SPOLoop(
+        #     environment,
+        #     eval_actor,
+        #     eval_counter,
+        #     eval_logger,
+        #     should_update=False,
+        #     observers=experiment.observers)s
+        # eval_loop.run_episode()
         
-        
-
-
+        df = pd.DataFrame(train_logger.data)
+        plt.figure(figsize=(10, 4))
+        plt.title('Training episodes returns')
+        plt.xlabel('Training episodes')
+        plt.ylabel('Episode return')
+        plt.plot(df['episode_return']);
+        plt.savefig('plot.png')
         environment.close()
-        return optimal_policy # these are just the parameters
+        # return optimal_policy # these are just the parameters
 
     def reward_function(self, metrics):
         episode_length = metrics["episode_length"]

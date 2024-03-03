@@ -48,9 +48,7 @@ def main():
     args = parser.parse_args()
     config = SPOConfig(args)
     runner = SPORunner(config)
-    policy = runner.run(runner.experiment)
-    print(policy)
-
+    runner.run(runner.experiment)
 
 
 if __name__ =='__main__':

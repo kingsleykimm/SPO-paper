@@ -76,13 +76,14 @@ class SAC():
         # trajectory contains metrics
         timesteps_a = trajectory_a["timestep"]
         timesteps_b = trajectory_b["timestep"]
-        reward_a = sum([x.reward for x in timesteps_a])
-        reward_b = sum([x.reward for x in timesteps_b])
+        reward_a = sum([x.reward for x in timesteps_a[1:]])
+        reward_b = sum([x.reward for x in timesteps_b[1:]])
         return 2 * (reward_a > reward_b) - 1
     def noisy_preference(self, trajectory_a, trajectory_b, epsilon):
         return self.max_reward_preference(trajectory_a, trajectory_b) * np.random.binomial(1, epsilon)
 
-# def ContRM():
-#     def __init__(self, config):
-#         suite, task = config.env_name.split(':', 1)
-#         environment = helpers.make_environment(suite, task)
+def ContRM():
+    def __init__(self, config):
+        suite, task = config.env_name.split(':', 1)
+        environment = helpers.make_environment(suite, task)
+        self.batch_size = config.batch_size
