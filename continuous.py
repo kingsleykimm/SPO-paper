@@ -87,3 +87,4 @@ def ContRM():
         suite, task = config.env_name.split(':', 1)
         environment = helpers.make_environment(suite, task)
         self.batch_size = config.batch_size
+        

@@ -30,6 +30,7 @@ class SPORunner():
         self.queue : List[Dict[str, Any]] = []
         self.policies : List[jax_types.Policy] = []
         self.preference_ = self.agent.get_preference_function()
+        self.run_number = run_config.run_number
     def run(self, experiment: config.ExperimentConfig): # input self.experiment
 
         key = jax.random.PRNGKey(experiment.seed)
@@ -178,10 +179,9 @@ class SPORunner():
         plt.xlabel('Training episodes')
         plt.ylabel('Episode return')
         plt.plot(df['episode_return']);
-        plt.savefig('plot.png')
+        plt.savefig(f'plot{self.run_number}.png')
         environment.close()
         # return optimal_policy # these are just the parameters
-
     def reward_function(self, metrics):
         episode_length = metrics["episode_length"]
         reward = 0
@@ -189,26 +189,6 @@ class SPORunner():
             reward += self.preference_(metrics, trajectory)
         return_reward = [reward / episode_length] * episode_length
         return return_reward
-    # def intransitive_reward(self, metrics):
-    #     """Computes reward for the given trajectory"""
-    #     episode_length = metrics["episode_length"]
-    #     # radii = metrics["radius"]
-    #     # angles = metrics["angle"]
-    #     # current_trajectory = Trajectory(radii[episode_length-1], angles[episode_length-1])
-    #     reward = 0
-    #     for trajectory in self.queue:
-    #         reward += self.agent.preference_function(metrics, trajectory)
-    #     return_reward = [reward / episode_length] * episode_length
-    #     return return_reward
-    #     # observations here are still angles
-    # def maximum_reward(self, metrics):
-    #     # first timestep is from observe_first
-    #     episode_length = metrics["episode_length"]
-    #     reward = 0
-    #     for trajectory in self.queue:
-    #         reward += self.agent.max_reward_preference(metrics, trajectory)
-    #     return_reward = [reward / episode_length] * episode_length
-    #     return return_reward
     def change_rewards_and_update(self, rewards, metrics, actor):
         episode_length = metrics["episode_length"]
         # for observe_first, there is more 

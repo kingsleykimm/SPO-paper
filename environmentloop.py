@@ -113,8 +113,8 @@ class SPOLoop(core.Worker):
         observer.observe(self._environment, timestep, action)
 
       # Give the actor the opportunity to update itself.
-      if self._should_update:
-        self._actor.update()
+      # if self._should_update:
+      #   self._actor.update()
 
       # Equivalent to: episode_return += timestep.reward
       # We capture the return value because if timestep.reward is a JAX
@@ -139,6 +139,7 @@ class SPOLoop(core.Worker):
         'env_step_duration_sec': np.mean(env_step_durations),
         'actor_random_state' : random_state,
     }
+    print(result)
     result.update(counts)
     for observer in self._observers:
       result.update(observer.get_metrics())

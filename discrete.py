@@ -8,17 +8,6 @@ import launchpad as lp
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_bool(
-    'run_distributed', True, 'Should an agent be executed in a distributed '
-    'way. If False, will run single-threaded.')
-flags.DEFINE_string('env_name', 'gym:HalfCheetah-v2', 'What environment to run')
-flags.DEFINE_integer('seed', 0, 'Random seed.')
-flags.DEFINE_integer('num_steps', 50_000_000, 'Number of env steps to run.')
-flags.DEFINE_integer('eval_every', 50_000, 'How often to run evaluation.')
-flags.DEFINE_integer('evaluation_episodes', 10, 'Evaluation episodes.')
-flags.DEFINE_integer('num_distributed_actors', 64,
-                     'Number of actors to use in the distributed setting.')
-
 
 
 def build_experiment_config():
@@ -44,18 +33,3 @@ def build_experiment_config():
         max_num_actor_steps=FLAGS.num_steps)
 
 
-def main(_):
-    config = build_experiment_config()
-    if FLAGS.run_distributed:
-        program = experiments.make_distributed_experiment(
-            experiment=config, num_actors=FLAGS.num_distributed_actors)
-        lp.launch(program, xm_resources=lp_utils.make_xm_docker_resources(program))
-    else:
-        experiments.run_experiment(
-            experiment=config,
-            eval_every=FLAGS.eval_every,
-            num_eval_episodes=FLAGS.evaluation_episodes)
-
-
-if __name__ == '__main__':
-    app.run(main)
