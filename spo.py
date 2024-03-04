@@ -128,11 +128,14 @@ class SPORunner():
             self.queue.append(metrics)
         self.policies.append(policy)
         for t in range(self.iterations):
+            print("ITERATIONS: " + str(t))
             metrics = train_loop.run_episode()
             rewards = self.reward_function(metrics) # reward at each timestep
             
             # need to plug in custom reward here
+            update_start = time.time()
             self.change_rewards_and_update(rewards, metrics, actor)
+            print('update_time' + str(time.time() - update_start))
             # update and get policy
             # Look at actor_core's line 67 method, shows how to fetch params for policy network
             # network is the policy network that is saved
@@ -216,7 +219,7 @@ class SPORunner():
 
             current_timestep = timesteps[i+1]
 
-            new_timestep = dm_env.TimeStep(step_type=current_timestep.step_type, reward= np.float32(rewards[i]), discount=current_timestep.reward,
+            new_timestep = dm_env.TimeStep(step_type=current_timestep.step_type, reward= np.float32(rewards[i]), discount=current_timestep.discount,
                                             observation=current_timestep.observation)
             actor.observe(action[i], next_timestep=new_timestep)
         actor.update()
@@ -303,8 +306,7 @@ class _LearningActor(core.Actor):
 
     def update(self):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
         # Update the actor weights only when learner was updated.
-        if self._maybe_train():
-            self._actor.update()
+        self._actor.update()
         if self._checkpointer:
             self._checkpointer.save()
 

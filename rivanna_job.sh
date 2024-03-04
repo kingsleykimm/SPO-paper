@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-#SBATCH --job-name="spo-test-run"
-#SABTCH --partition=gpu
-#SBATCH --time=0:30:00
-#SBATCH --account=bii_dsc_community
+#SBATCH --job-name="train"
+#SBATCH --output=outputs/train.out
+#SBATCH --partition=gpu
+#SBATCH --time=24:00:00
 #SBATCH --gres=gpu:v100:1
+#SBATCH --account=bii_dsc_community
 #SBATCH --mem=32GB
 
-source /etc/profile.d/modules.sh
+
+
 source ~/.bashrc
 
 module load cuda cudnn
