@@ -18,7 +18,7 @@ import jax
 import reverb
 import numpy as np
 from environmentloop import SPOLoop
-
+from collections import deque
 
 # SPO Runner class should contain specific environment run configs
 class SPORunner():
@@ -27,7 +27,7 @@ class SPORunner():
         self.queue_size = run_config.queue_size
         self.agent = run_config.agent
         self.experiment = self.agent.get_experiment_config()
-        self.queue : List[Dict[str, Any]] = []
+        self.queue = deque()
         self.policies : List[jax_types.Policy] = []
         self.preference_ = self.agent.get_preference_function()
         self.run_number = run_config.run_number
@@ -132,7 +132,7 @@ class SPORunner():
             print("ITERATIONS: " + str(t))
             metrics = train_loop.run_episode()
             rewards = self.reward_function(metrics) # reward at each timestep
-            
+
             # need to plug in custom reward here
             update_start = time.time()
             self.change_rewards_and_update(rewards, metrics, actor)
@@ -141,16 +141,19 @@ class SPORunner():
             # Look at actor_core's line 67 method, shows how to fetch params for policy network
             # network is the policy network that is saved
             # Generic_actor's line 76 instead, shows the params
-            self.queue.pop(0)
+            self.queue.popleft()
             self.queue.append(metrics)
-            self.policies.append(actor._actor._wrapped_actor._params)
+            # self.policies.append(actor._actor._wrapped_actor._params)
+            # print(actor._actor._wrapped_actor._params)
             train_logger.write(metrics)
         # optimal_policy : jax_types.Policy = self.policies[-1]
         # eval_counter = counting.Counter(
         #     parent_counter, prefix='evaluator', time_delta=0.)
         # eval_logger = experiment.logger_factory('evaluator',
         #                                         eval_counter.get_steps_key(), 0)
-        
+        # for t in range(self.iterations):
+        #     print("EVAL_ITERATIONS: " + str(t))
+        #     metrices = train
 
         # eval_policy = config.make_policy(
         #     experiment=experiment,
@@ -178,7 +181,9 @@ class SPORunner():
         plt.title('Training episodes returns')
         plt.xlabel('Training episodes')
         plt.ylabel('Episode return')
-        plt.plot(df['episode_return']);
+        plt.plot(df['episode_return'])
+        ax = plt.gca()
+        ax.set_ylim([0, 1000])
         plt.savefig(f'plot{self.run_number}.png')
         environment.close()
         # return optimal_policy # these are just the parameters
@@ -187,6 +192,7 @@ class SPORunner():
         reward = 0
         for trajectory in self.queue:
             reward += self.preference_(metrics, trajectory)
+        reward = reward / self.queue_size
         return_reward = [reward / episode_length] * episode_length
         return return_reward
     def change_rewards_and_update(self, rewards, metrics, actor):
@@ -195,6 +201,7 @@ class SPORunner():
         timesteps = metrics["timestep"]
         action = metrics["action"]
         actor.observe_first(timesteps[0])
+        ts = None
         for i in range(episode_length):
 
             current_timestep = timesteps[i+1]
@@ -203,6 +210,7 @@ class SPORunner():
                                             observation=current_timestep.observation)
             actor.observe(action[i], next_timestep=new_timestep)
         actor.update()
+
         # update actor
             
 
@@ -285,8 +293,9 @@ class _LearningActor(core.Actor):
                 time.sleep(0.001)
 
     def update(self):  # pytype: disable=signature-mismatch  # overriding-parameter-count-checks
-        # Update the actor weights only when learner was updated.
-        self._actor.update()
+        # Update the actor weights only when learner was updated.e
+        if self._maybe_train():
+            self._actor.update()
         if self._checkpointer:
             self._checkpointer.save()
 

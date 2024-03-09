@@ -1,15 +1,18 @@
 import acme
 from acme import specs
 from acme.agents.jax import normalization
-from acme.agents.jax import sac
+from acme.agents.jax import sac, ppo
 from acme.agents.jax.sac import builder
 import helpers
 from acme.jax import experiments
-from acme.utils import lp_utils, observers
+from acme.utils import lp_utils, observers, loggers
 import math
 from observer import ContObserver
 import numpy as np
-
+from typing import Optional
+import collections
+import matplotlib.pyplot as plt
+import pandas as pd
 _VALID_PREFERENCES = ('intransitive', 'maximum_reward', 'noisy', 'non-markovian')
 
 class SAC():
@@ -34,7 +37,7 @@ class SAC():
             batch_size=256,
             learning_rate=learning_rate,
             # target_entropy=sac.target_entropy_from_env_spec(environment_spec),
-            entropy_coefficient=1e-4, # entropy coefficient should only be this for intransitive preferences
+            entropy_coefficient=sac.target_entropy_from_env_spec(environment_spec), # entropy coefficient should only be this for intransitive preferences
             input_normalization=normalization.NormalizationConfig()) # hyperparameters from paper
         sac_builder = builder.SACBuilder(sac_config) # adam optimizer is configured in builder
         observers = [ContObserver()]
@@ -88,3 +91,49 @@ def ContRM():
         environment = helpers.make_environment(suite, task)
         self.batch_size = config.batch_size
         
+
+class VanillaPPO():
+    def __init__(self, env_name : str,
+                 min_replay_size : int,
+                 max_replay_size: int,
+                 learning_rate : float,
+                 seed : int,
+                 num_steps : int,
+                 iterations : int):
+        self.iterations = iterations
+        suite, task = env_name.split(':', 1)
+        environment = helpers.make_environment(suite, task)
+        environment_spec = specs.make_environment_spec(environment)
+        network_factory = (
+            lambda spec: ppo.make_networks(spec, hidden_layer_sizes=(256, 256, 256)))
+        config = ppo.PPOConfig(
+            normalize_advantage=True,
+            normalize_value=True,
+            obs_normalization_fns_factory=ppo.build_mean_std_normalizer)
+        ppo_builder = ppo.PPOBuilder(config)
+        self.logger_dict = collections.defaultdict(loggers.InMemoryLogger)
+        def logger_factory(
+            name: str,
+            steps_key: Optional[str] = None,
+            task_id: Optional[int] = None,
+        ) -> loggers.Logger:
+            del steps_key, task_id
+            return self.logger_dict[name]
+        self.experiment = experiments.ExperimentConfig(
+            builder=ppo_builder,
+            environment_factory=lambda seed: helpers.make_environment(suite, task),
+            network_factory=network_factory,
+            max_num_actor_steps=num_steps,
+            logger_factory=logger_factory,
+            seed=seed
+        )
+    def get_experiment_config(self):
+        return self.experiment
+    def run_experiment(self):
+        experiments.run_experiment(experiment=self.experiment, eval_every=1000, num_eval_episodes=1)
+        df = pd.DataFrame(self.logger_dict['evaluator'].data)
+        plt.figure(figsize=(10, 4))
+        plt.title('Training episodes returns')
+        plt.xlabel('Training episodes')
+        plt.ylabel('Episode return')
+        plt.plot(df['actor_episodes'], df['episode_return'], label='Training Episodes return')
