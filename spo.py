@@ -125,14 +125,14 @@ class SPORunner():
                     should_update=False,
                     )
         for i in range(self.queue_size):
-            metrics = train_loop.run_episode()
+            metrics = train_loop.run_episode(collection=True)
             self.queue.append(metrics)
         self.policies.append(policy)
         for t in range(self.iterations):
             print("ITERATIONS: " + str(t))
             metrics = train_loop.run_episode()
-            rewards = self.reward_function(metrics) # reward at each timestep
-
+            # rewards = self.reward_function(metrics) # reward at each timestep
+            rewards = metrics['episode_return'] / metrics['episode_length']
             # need to plug in custom reward here
             update_start = time.time()
             self.change_rewards_and_update(rewards, metrics, actor)
@@ -193,20 +193,18 @@ class SPORunner():
         for trajectory in self.queue:
             reward += self.preference_(metrics, trajectory)
         reward = reward / self.queue_size
-        return_reward = [reward / episode_length] * episode_length
-        return return_reward
+        return reward
     def change_rewards_and_update(self, rewards, metrics, actor):
         episode_length = metrics["episode_length"]
         # for observe_first, there is more 
         timesteps = metrics["timestep"]
         action = metrics["action"]
-        actor.observe_first(timesteps[0])
         ts = None
         for i in range(episode_length):
 
             current_timestep = timesteps[i+1]
 
-            new_timestep = dm_env.TimeStep(step_type=current_timestep.step_type, reward= np.float32(rewards[i]), discount=current_timestep.discount,
+            new_timestep = dm_env.TimeStep(step_type=current_timestep.step_type, reward= np.float32(rewards), discount=current_timestep.discount,
                                             observation=current_timestep.observation)
             actor.observe(action[i], next_timestep=new_timestep)
         actor.update()
