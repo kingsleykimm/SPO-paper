@@ -96,17 +96,17 @@ class SPORunner():
         train_logger = loggers.InMemoryLogger()
 
         checkpointer = None
-        if experiment.checkpointing is not None:
-            checkpointing = experiment.checkpointing
-            checkpointer = savers.Checkpointer(
-                objects_to_save={'learner': learner, 'counter': parent_counter},
-                time_delta_minutes=checkpointing.time_delta_minutes,
-                directory=checkpointing.directory,
-                add_uid=checkpointing.add_uid,
-                max_to_keep=checkpointing.max_to_keep,
-                keep_checkpoint_every_n_hours=checkpointing.keep_checkpoint_every_n_hours,
-                checkpoint_ttl_seconds=checkpointing.checkpoint_ttl_seconds,
-            )
+        # if experiment.checkpointing is not None:
+        #     checkpointing = experiment.checkpointing
+        #     checkpointer = savers.Checkpointer(
+        #         objects_to_save={'learner': learner, 'counter': parent_counter},
+        #         time_delta_minutes=checkpointing.time_delta_minutes,
+        #         directory=checkpointing.directory,
+        #         add_uid=checkpointing.add_uid,
+        #         max_to_keep=checkpointing.max_to_keep,
+        #         keep_checkpoint_every_n_hours=checkpointing.keep_checkpoint_every_n_hours,
+        #         checkpoint_ttl_seconds=checkpointing.checkpoint_ttl_seconds,
+        #     )
 
         # Replace the actor with a LearningActor. This makes sure that every time
         # that `update` is called on the actor it checks to see whether there is
@@ -131,12 +131,15 @@ class SPORunner():
         for t in range(self.iterations):
             print("ITERATIONS: " + str(t))
             metrics = train_loop.run_episode()
-            # rewards = self.reward_function(metrics) # reward at each timestep
-            rewards = metrics['episode_return'] / metrics['episode_length']
+            rewards = self.reward_function(metrics) # reward at each timestep
+
             # need to plug in custom reward here
             update_start = time.time()
             self.change_rewards_and_update(rewards, metrics, actor)
+            actor.update()
             print('update_time' + str(time.time() - update_start))
+            print(metrics['episode_return'])
+            adder.reset()
             # update and get policy
             # Look at actor_core's line 67 method, shows how to fetch params for policy network
             # network is the policy network that is saved
@@ -146,6 +149,7 @@ class SPORunner():
             # self.policies.append(actor._actor._wrapped_actor._params)
             # print(actor._actor._wrapped_actor._params)
             train_logger.write(metrics)
+            print(actor._learner_steps)
         # optimal_policy : jax_types.Policy = self.policies[-1]
         # eval_counter = counting.Counter(
         #     parent_counter, prefix='evaluator', time_delta=0.)
@@ -182,8 +186,8 @@ class SPORunner():
         plt.xlabel('Training episodes')
         plt.ylabel('Episode return')
         plt.plot(df['episode_return'])
-        ax = plt.gca()
-        ax.set_ylim([0, 1000])
+        # ax = plt.gca()
+        # ax.set_ylim([0, 1000])
         plt.savefig(f'plot{self.run_number}.png')
         environment.close()
         # return optimal_policy # these are just the parameters
@@ -193,6 +197,7 @@ class SPORunner():
         for trajectory in self.queue:
             reward += self.preference_(metrics, trajectory)
         reward = reward / self.queue_size
+        reward = reward / episode_length
         return reward
     def change_rewards_and_update(self, rewards, metrics, actor):
         episode_length = metrics["episode_length"]
@@ -203,12 +208,9 @@ class SPORunner():
         for i in range(episode_length):
 
             current_timestep = timesteps[i+1]
-
             new_timestep = dm_env.TimeStep(step_type=current_timestep.step_type, reward= np.float32(rewards), discount=current_timestep.discount,
                                             observation=current_timestep.observation)
             actor.observe(action[i], next_timestep=new_timestep)
-        actor.update()
-
         # update actor
             
 

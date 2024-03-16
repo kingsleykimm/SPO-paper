@@ -140,7 +140,6 @@ class SPOLoop(core.Worker):
         'env_reset_duration_sec': env_reset_duration,
         'select_action_duration_sec': np.mean(select_action_durations),
         'env_step_duration_sec': np.mean(env_step_durations),
-        'actor_random_state' : random_state,
     }
     result.update(counts)
     for observer in self._observers:

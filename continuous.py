@@ -36,8 +36,8 @@ class SAC():
             max_replay_size=max_replay_size,
             batch_size=256,
             learning_rate=learning_rate,
-            # target_entropy=sac.target_entropy_from_env_spec(environment_spec),
-            entropy_coefficient=sac.target_entropy_from_env_spec(environment_spec), # entropy coefficient should only be this for intransitive preferences
+            target_entropy=sac.target_entropy_from_env_spec(environment_spec),
+            # entropy_coefficient=sac.target_entropy_from_env_spec(environment_spec), # entropy coefficient should only be this for intransitive preferences
             input_normalization=normalization.NormalizationConfig()) # hyperparameters from paper
         sac_builder = builder.SACBuilder(sac_config) # adam optimizer is configured in builder
         observers = [ContObserver()]

@@ -5,6 +5,8 @@
 #SBATCH --gres=gpu:v100:1
 #SBATCH --account=bii_dsc_community
 #SBATCH --mem=16GB
+#SBATCH -N 1
+#SBATCH --cpus-per-task=4
 
 
 
@@ -13,4 +15,4 @@ module load cuda cudnn
 module load anaconda
 conda deactivate
 conda activate rl
-python config.py --env_name control:quadruped:walk --preference_function maximum_reward --iterations 750 --run_number 750 --agent sac
+python config.py --env_name control:hopper:stand --preference_function maximum_reward --iterations 1000 --run_number hopper --agent sac

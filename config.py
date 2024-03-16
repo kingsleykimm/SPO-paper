@@ -41,7 +41,7 @@ def main():
     parser.add_argument('--min_replay_size', type=int, default=10000, help='Minimum replay buffer size')
     parser.add_argument('--max_replay_size', type=int, default=1000000, help='Maximum replay buffer size')
     parser.add_argument('--preference_function', type=str, default='intransitive', help='Preference Function to use')
-    parser.add_argument('--run_number', type=int, default=0, help='Run Number')
+    parser.add_argument('--run_number', type=str, default="0", help='Run Number')
     parser.add_argument('--agent', type=str, default='sac', help='Agent being used')
     args = parser.parse_args()
     config = SPOConfig(args)
