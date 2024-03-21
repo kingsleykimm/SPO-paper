@@ -136,7 +136,6 @@ class SPORunner():
             # need to plug in custom reward here
             update_start = time.time()
             self.change_rewards_and_update(rewards, metrics, actor)
-            actor.update()
             print('update_time' + str(time.time() - update_start))
             print(metrics['episode_return'])
             adder.reset()
@@ -197,7 +196,6 @@ class SPORunner():
         for trajectory in self.queue:
             reward += self.preference_(metrics, trajectory)
         reward = reward / self.queue_size
-        reward = reward / episode_length
         return reward
     def change_rewards_and_update(self, rewards, metrics, actor):
         episode_length = metrics["episode_length"]
@@ -211,6 +209,7 @@ class SPORunner():
             new_timestep = dm_env.TimeStep(step_type=current_timestep.step_type, reward= np.float32(rewards), discount=current_timestep.discount,
                                             observation=current_timestep.observation)
             actor.observe(action[i], next_timestep=new_timestep)
+            actor.update()
         # update actor
             
 
