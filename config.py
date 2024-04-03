@@ -45,11 +45,9 @@ def main():
     parser.add_argument('--agent', type=str, default='sac', help='Agent being used')
     args = parser.parse_args()
     config = SPOConfig(args)
-    if args.agent == 'sac':
-        runner = SPORunner(config)
-        runner.run(runner.experiment)
-    elif args.agent =='ppo':
-        config.agent.run_experiment()
+
+    runner = SPORunner(config)
+    runner.run(runner.experiment)
     print(args.seed)
 
 

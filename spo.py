@@ -2,7 +2,6 @@
 import sys
 import time
 from typing import Optional, Sequence, Tuple, Dict, List, Any
-import acme
 from acme import core
 from acme import specs
 from acme import types
@@ -16,6 +15,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import jax
 import reverb
+import pickle
+import os
 import numpy as np
 from environmentloop import SPOLoop
 from collections import deque
@@ -95,18 +96,11 @@ class SPORunner():
                                                 # train_counter.get_steps_key(), 0)
         train_logger = loggers.InMemoryLogger()
 
-        checkpointer = None
-        # if experiment.checkpointing is not None:
-        #     checkpointing = experiment.checkpointing
-        #     checkpointer = savers.Checkpointer(
-        #         objects_to_save={'learner': learner, 'counter': parent_counter},
-        #         time_delta_minutes=checkpointing.time_delta_minutes,
-        #         directory=checkpointing.directory,
-        #         add_uid=checkpointing.add_uid,
-        #         max_to_keep=checkpointing.max_to_keep,
-        #         keep_checkpoint_every_n_hours=checkpointing.keep_checkpoint_every_n_hours,
-        #         checkpoint_ttl_seconds=checkpointing.checkpoint_ttl_seconds,
-        #     )
+
+        checkpointer = savers.Checkpointer(
+                objects_to_save={'learner': learner, 'counter': parent_counter},
+                directory=os.getcwd() + "/saved_models/" + self.run_number,
+            )
 
         # Replace the actor with a LearningActor. This makes sure that every time
         # that `update` is called on the actor it checks to see whether there is
@@ -127,7 +121,7 @@ class SPORunner():
         for i in range(self.queue_size):
             metrics = train_loop.run_episode(collection=True)
             self.queue.append(metrics)
-        self.policies.append(policy)
+        best_policy_params = None
         for t in range(self.iterations):
             print("ITERATIONS: " + str(t))
             metrics = train_loop.run_episode()
@@ -148,7 +142,23 @@ class SPORunner():
             # self.policies.append(actor._actor._wrapped_actor._params)
             # print(actor._actor._wrapped_actor._params)
             train_logger.write(metrics)
-            print(actor._learner_steps)
+        
+
+        # model_dict = default_models_to_snapshot(networks, environment_spec)
+        # object_model_dict = {
+        #     key : model_dict[key](learner) for key in model_dict.keys()
+        # }
+        # self.snapshotter = savers.Snapshotter(
+        #     objects_to_save=object_model_dict,
+        #     directory= os.getcwd() + "/saved_models"
+        # )
+        # self.snapshotter.save(force=True)
+        # offline_data = deque()
+        # for i in range(len(1000)): # Replace with number of trajectories
+        #     offline_data.append(train_loop.run_episode(collection=True))
+        
+        # start running an offline agent 
+
         # optimal_policy : jax_types.Policy = self.policies[-1]
         # eval_counter = counting.Counter(
         #     parent_counter, prefix='evaluator', time_delta=0.)
@@ -196,6 +206,7 @@ class SPORunner():
         for trajectory in self.queue:
             reward += self.preference_(metrics, trajectory)
         reward = reward / self.queue_size
+        reward = reward / episode_length
         return reward
     def change_rewards_and_update(self, rewards, metrics, actor):
         episode_length = metrics["episode_length"]
@@ -295,8 +306,8 @@ class _LearningActor(core.Actor):
         # Update the actor weights only when learner was updated.e
         if self._maybe_train():
             self._actor.update()
-        if self._checkpointer:
-            self._checkpointer.save()
+        # if self._checkpointer:
+        #     self._checkpointer.save()
 
 
 def _disable_insert_blocking(
