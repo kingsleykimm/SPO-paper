@@ -15,4 +15,4 @@ module load cuda cudnn
 module load anaconda
 conda deactivate
 conda activate rl
-python config.py --env_name control:hopper:stand --preference_function maximum_reward --iterations 1000 --run_number hopper --agent sac
+python config.py --env_name control:walker:walk --preference_function maximum_reward --iterations 1000 --run_number walker:walk --agent sac 
